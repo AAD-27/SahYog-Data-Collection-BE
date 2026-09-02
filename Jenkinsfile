@@ -56,14 +56,22 @@ pipeline {
                 withCredentials([string(credentialsId: 'sahyog-mysql-password', variable: 'MYSQL_PASSWORD')]) {
                     sh '''
                         docker rm --force "${CONTAINER_NAME}" 2>/dev/null || true
-                        docker run --detach \
-                          --name "${CONTAINER_NAME}" \
-                          --restart unless-stopped \
-                          --add-host host.docker.internal:host-gateway \
-                          --publish "${APP_PORT}:${APP_PORT}" \
-                          --env MYSQL_PASSWORD="${MYSQL_PASSWORD}" \
-                          --env SPRING_DATASOURCE_URL="jdbc:mysql://host.docker.internal:3306/SAHYOG_DB?useSSL=false&serverTimezone=Asia/Kolkata&allowPublicKeyRetrieval=true" \
-                          "${IMAGE_NAME}:${BUILD_NUMBER}"
+                        for attempt in 1 2 3 4 5 6; do
+                          if docker run --detach \
+                            --name "${CONTAINER_NAME}" \
+                            --restart unless-stopped \
+                            --add-host host.docker.internal:host-gateway \
+                            --publish "${APP_PORT}:${APP_PORT}" \
+                            --env MYSQL_PASSWORD="${MYSQL_PASSWORD}" \
+                            --env SPRING_DATASOURCE_URL="jdbc:mysql://host.docker.internal:3306/SAHYOG_DB?useSSL=false&serverTimezone=Asia/Kolkata&allowPublicKeyRetrieval=true" \
+                            "${IMAGE_NAME}:${BUILD_NUMBER}"; then
+                            exit 0
+                          fi
+                          docker rm --force "${CONTAINER_NAME}" 2>/dev/null || true
+                          echo "Port ${APP_PORT} is not released yet; retrying deployment (${attempt}/6)..."
+                          sleep 5
+                        done
+                        exit 1
                     '''
                 }
             }
