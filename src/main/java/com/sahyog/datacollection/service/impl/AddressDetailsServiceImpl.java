@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import java.util.Set;
 
 @Service
 public class AddressDetailsServiceImpl implements AddressDetailsService {
@@ -25,6 +26,8 @@ public class AddressDetailsServiceImpl implements AddressDetailsService {
     private static final Pattern APP_OR_CASE_NUMBER = Pattern.compile("[AD]\\d{7}");
     private static final Pattern PINCODE = Pattern.compile("\\d{6}");
     private final JdbcTemplate jdbcTemplate;
+    private static final Set<String> OCCUPANCY_TYPES = Set.of("OWNER", "TENANT", "FAMILY_OWNED",
+            "GOVERNMENT_HOUSING", "OTHER");
 
     public AddressDetailsServiceImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -36,20 +39,24 @@ public class AddressDetailsServiceImpl implements AddressDetailsService {
         String applicationNum = resolveCaseNumber(request == null ? null : request.appOrCaseNum());
         ensureApplicationExists(applicationNum);
         List<AddressRow> rows = jdbcTemplate.query("""
-                SELECT ADDRESS_TYPE, ADDRESS_LINE1, ADDRESS_LINE2, CITY, STATE, COUNTRY, PINCODE
+                SELECT ADDRESS_TYPE, ADDRESS_LINE1, ADDRESS_LINE2, CITY, STATE, COUNTRY, PINCODE,
+                       OCCUPANCY_TYPE, RESPONSIBLE_FOR_UTILITY_BILLS
                   FROM DC_ADDRESS
                  WHERE APPLICATION_NO = ? AND ADDRESS_TYPE IN ('PERMANENT', 'TEMPORARY')
                  ORDER BY ADDRESS_ID
                 """, (rs, rowNum) -> new AddressRow(rs.getString("ADDRESS_TYPE"), new AddressDetails(
                 rs.getString("ADDRESS_LINE1"), rs.getString("ADDRESS_LINE2"), rs.getString("CITY"),
-                rs.getString("STATE"), rs.getString("COUNTRY"), rs.getString("PINCODE"))), applicationNum);
+                rs.getString("STATE"), rs.getString("COUNTRY"), rs.getString("PINCODE")),
+                rs.getString("OCCUPANCY_TYPE"), nullableBoolean(rs, "RESPONSIBLE_FOR_UTILITY_BILLS")), applicationNum);
         AddressDetails permanent = first(rows, PERMANENT);
         AddressDetails temporary = first(rows, TEMPORARY);
         if (permanent == null && temporary == null) {
             return new AddressInitializeResponse(applicationNum, PAGE_ID, null, false);
         }
+        AddressRow primary = rows.get(0);
         return new AddressInitializeResponse(applicationNum, PAGE_ID,
-                new AddressPayload(permanent, temporary, permanent != null && permanent.equals(temporary)), true);
+                new AddressPayload(permanent, temporary, permanent != null && permanent.equals(temporary),
+                        primary.occupancyType(), primary.responsibleForUtilityBills()), true);
     }
 
     @Override
@@ -79,8 +86,10 @@ public class AddressDetailsServiceImpl implements AddressDetailsService {
             throw badRequest("temporary address is required when sameAsPermanent is false");
         }
         validateAddress(temporary, "temporary");
-        upsert(applicationNum, PERMANENT, permanent);
-        upsert(applicationNum, TEMPORARY, temporary);
+        String occupancy = normalize(request.address().occupancyType());
+        if (occupancy != null && !OCCUPANCY_TYPES.contains(occupancy)) throw badRequest("occupancyType must be one of " + OCCUPANCY_TYPES);
+        upsert(applicationNum, PERMANENT, permanent, occupancy, request.address().responsibleForUtilityBills());
+        upsert(applicationNum, TEMPORARY, temporary, occupancy, request.address().responsibleForUtilityBills());
         jdbcTemplate.update("""
                 UPDATE DC_APPLICATION
                    SET PAGE_ID = ?, APPLICATION_STATUS = 'IN_PROGRESS', UPDATED_DATE = CURRENT_TIMESTAMP
@@ -89,20 +98,23 @@ public class AddressDetailsServiceImpl implements AddressDetailsService {
         return applicationNum;
     }
 
-    private void upsert(String applicationNum, String type, AddressDetails address) {
+    private void upsert(String applicationNum, String type, AddressDetails address, String occupancy, Boolean responsible) {
         int updated = jdbcTemplate.update("""
                 UPDATE DC_ADDRESS
-                   SET ADDRESS_LINE1 = ?, ADDRESS_LINE2 = ?, CITY = ?, STATE = ?, COUNTRY = ?, PINCODE = ?
+                   SET ADDRESS_LINE1 = ?, ADDRESS_LINE2 = ?, CITY = ?, STATE = ?, COUNTRY = ?, PINCODE = ?,
+                       OCCUPANCY_TYPE = ?, RESPONSIBLE_FOR_UTILITY_BILLS = ?
                  WHERE APPLICATION_NO = ? AND ADDRESS_TYPE = ?
                 """, address.line1().trim(), trimToNull(address.line2()), address.city().trim(), address.state().trim(),
-                address.country().trim(), address.pincode().trim(), applicationNum, type);
+                address.country().trim(), address.pincode().trim(), occupancy, responsible, applicationNum, type);
         if (updated == 0) {
             jdbcTemplate.update("""
                     INSERT INTO DC_ADDRESS
-                      (APPLICATION_NO, ADDRESS_TYPE, ADDRESS_LINE1, ADDRESS_LINE2, CITY, STATE, COUNTRY, PINCODE)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                      (APPLICATION_NO, ADDRESS_TYPE, ADDRESS_LINE1, ADDRESS_LINE2, CITY, STATE, COUNTRY, PINCODE,
+                       OCCUPANCY_TYPE, RESPONSIBLE_FOR_UTILITY_BILLS)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, applicationNum, type, address.line1().trim(), trimToNull(address.line2()),
-                    address.city().trim(), address.state().trim(), address.country().trim(), address.pincode().trim());
+                    address.city().trim(), address.state().trim(), address.country().trim(), address.pincode().trim(),
+                    occupancy, responsible);
         }
     }
 
@@ -140,6 +152,10 @@ public class AddressDetailsServiceImpl implements AddressDetailsService {
     private String trimToNull(String value) {
         return isBlank(value) ? null : value.trim();
     }
+    private String normalize(String value) { return isBlank(value) ? null : value.trim().toUpperCase(Locale.ROOT); }
+    private Boolean nullableBoolean(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        boolean value = rs.getBoolean(column); return rs.wasNull() ? null : value;
+    }
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
@@ -149,5 +165,6 @@ public class AddressDetailsServiceImpl implements AddressDetailsService {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 
-    private record AddressRow(String type, AddressDetails details) { }
+    private record AddressRow(String type, AddressDetails details, String occupancyType,
+                              Boolean responsibleForUtilityBills) { }
 }

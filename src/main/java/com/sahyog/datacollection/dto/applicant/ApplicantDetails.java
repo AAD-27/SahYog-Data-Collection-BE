@@ -6,4 +6,10 @@ public record ApplicantDetails(
         String lastName,
         String mobileNumber,
         String emailAddress,
-        String applicationDate) { }
+        String applicationDate,
+        Boolean isIndianResident,
+        String employmentStatus,
+        Boolean isSoleEarningMember,
+        java.util.List<String> medicalConditions,
+        String otherMedicalCondition,
+        Boolean isMajorOrChronic) { }

@@ -39,7 +39,8 @@ class PersonInformationServiceImplTest {
     @Test
     void rejectsInvalidAadharNumber() {
         PersonDetails person = new PersonDetails(null, "Primary Applicant", "Ameya", null, "Dikshit",
-                LocalDate.of(1995, 1, 1), null, "Male", null, null, null, "123", null, null);
+                LocalDate.of(1995, 1, 1), null, "Male", null, null, null, "123", null, null,
+                "SELF", false, true, null);
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> service.next(new PersonSaveRequest("D9000016", "DC005", person)));
         assertEquals(400, exception.getStatusCode().value());
@@ -48,7 +49,7 @@ class PersonInformationServiceImplTest {
     private PersonSaveRequest validRequest(String number) {
         PersonDetails person = new PersonDetails(null, "Primary Applicant", "Ameya", null, "Dikshit",
                 LocalDate.of(1995, 1, 1), null, "Male", "General", "Hindu", "Single",
-                "123456789012", "ABCDE1234F", null);
+                "123456789012", "ABCDE1234F", null, "SELF", false, true, null);
         return new PersonSaveRequest(number, "DC005", person);
     }
 }

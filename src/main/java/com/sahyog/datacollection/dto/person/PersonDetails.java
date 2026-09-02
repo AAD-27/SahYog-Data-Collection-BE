@@ -16,4 +16,8 @@ public record PersonDetails(
         String maritalStatus,
         String aadharNumber,
         String panNumber,
-        String passportNumber) { }
+        String passportNumber,
+        String relationshipToPrimaryApplicant,
+        Boolean isLegalDependent,
+        Boolean residesInApplicantHousehold,
+        Long guardianPersonId) { }

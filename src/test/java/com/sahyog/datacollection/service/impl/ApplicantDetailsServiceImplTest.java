@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 
 class ApplicantDetailsServiceImplTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    private final ApplicantDetailsServiceImpl service = new ApplicantDetailsServiceImpl(jdbc);
+    private final ApplicantDetailsServiceImpl service = new ApplicantDetailsServiceImpl(jdbc, new com.fasterxml.jackson.databind.ObjectMapper());
 
     @Test
     void nextSavesAndNavigatesToDc003() {
@@ -29,7 +29,7 @@ class ApplicantDetailsServiceImplTest {
     void nextAcceptsApplicationNumberAndReturnsResolvedCaseNumber() {
         when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
         var request = new ApplicantDetailsSaveRequest("A9000016", "DC002",
-                new ApplicantDetails("Ameya", null, "Dikshit", "2345676543", null, "22-08-2026"));
+                new ApplicantDetails("Ameya", null, "Dikshit", "2345676543", null, "22-08-2026", true, "UNEMPLOYED", true, java.util.List.of(), null, false));
         assertEquals("D9000016", service.next(request).appOrCaseNum());
     }
 
@@ -42,7 +42,7 @@ class ApplicantDetailsServiceImplTest {
     @Test
     void rejectsInvalidMobileNumber() {
         var request = new ApplicantDetailsSaveRequest("D9000016", "DC002",
-                new ApplicantDetails("Ameya", null, "Dikshit", "123", null, "22-08-2026"));
+                new ApplicantDetails("Ameya", null, "Dikshit", "123", null, "22-08-2026", true, "UNEMPLOYED", true, java.util.List.of(), null, false));
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> service.next(request));
         assertEquals(400, exception.getStatusCode().value());
     }
@@ -50,6 +50,6 @@ class ApplicantDetailsServiceImplTest {
     private ApplicantDetailsSaveRequest validRequest() {
         return new ApplicantDetailsSaveRequest("D9000016", "DC002",
                 new ApplicantDetails("Ameya", null, "Dikshit", "2345676543",
-                        "amydikshit@gmail.com", "22-08-2026"));
+                        "amydikshit@gmail.com", "22-08-2026", true, "UNEMPLOYED", true, java.util.List.of(), null, false));
     }
 }

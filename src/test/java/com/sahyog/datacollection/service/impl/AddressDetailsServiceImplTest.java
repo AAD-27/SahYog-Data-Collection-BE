@@ -45,7 +45,7 @@ class AddressDetailsServiceImplTest {
     @Test
     void rejectsInvalidPincode() {
         AddressDetails invalid = new AddressDetails("Line 1", null, "Pune", "Maharashtra", "India", "4110");
-        var request = new AddressSaveRequest("D9000016", new AddressPayload(invalid, invalid, false));
+        var request = new AddressSaveRequest("D9000016", new AddressPayload(invalid, invalid, false, "TENANT", true));
         when(jdbc.queryForObject(anyString(), eq(Integer.class), eq("D9000016"))).thenReturn(1);
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> service.next(request));
         assertEquals(400, exception.getStatusCode().value());
@@ -56,6 +56,6 @@ class AddressDetailsServiceImplTest {
                 "12 MG Road", null, "Pune", "Maharashtra", "India", "411001");
         AddressDetails temporary = new AddressDetails(
                 "34 FC Road", "Near College", "Pune", "Maharashtra", "India", "411004");
-        return new AddressSaveRequest("D9000016", new AddressPayload(permanent, temporary, sameAsPermanent));
+        return new AddressSaveRequest("D9000016", new AddressPayload(permanent, temporary, sameAsPermanent, "TENANT", true));
     }
 }
