@@ -53,6 +53,38 @@ pipeline {
             }
         }
 
+        stage('Sonar Quality Gate') {
+            steps {
+                withSonarQubeEnv('SonarQubeScanner') {
+                    sh '''
+                        docker run --rm \
+                          --user "$(id -u):$(id -g)" \
+                          --volumes-from jenkins \
+                          --volume sahyog-maven-cache:/root/.m2 \
+                          --network devops-net \
+                          --workdir "${WORKSPACE}" \
+                          --env SONAR_HOST_URL="${SONAR_HOST_URL}" \
+                          --env SONAR_TOKEN="${SONAR_AUTH_TOKEN}" \
+                          maven:3.9-eclipse-temurin-17 \
+                          mvn --batch-mode org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                            -Dsonar.host.url="${SONAR_HOST_URL}" \
+                            -Dsonar.token="${SONAR_AUTH_TOKEN}" \
+                            -Dsonar.projectKey=sahyog-dc \
+                            -Dsonar.projectName="SahYog DC" \
+                            -Dsonar.maven.scanAll=false \
+                            -Dsonar.sources=src/main/java \
+                            -Dsonar.tests=src/test/java \
+                            -Dsonar.inclusions="**/*.java" \
+                            -Dsonar.test.inclusions="**/*.java" \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.java.test.binaries=target/test-classes \
+                            -Dsonar.qualitygate.wait=true \
+                            -Dsonar.qualitygate.timeout=300
+                    '''
+                }
+            }
+        }
+
         stage('Package') {
             steps {
                 sh '''
