@@ -22,6 +22,11 @@ pipeline {
     stages {
         stage('Build') {
             steps {
+                script {
+                    def shortCommit = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
+                    currentBuild.displayName = "#${env.BUILD_NUMBER} ${shortCommit}"
+                    currentBuild.description = "Commit ${env.GIT_COMMIT ?: shortCommit}"
+                }
                 sh '''
                     docker run --rm \
                       --user "$(id -u):$(id -g)" \
@@ -57,6 +62,11 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQubeScanner') {
                     sh '''
+                        test "$(find src/main/java -type f -name '*.java' | wc -l)" -gt 0 || {
+                          echo "No main Java source files found; refusing an empty SonarQube analysis."
+                          exit 1
+                        }
+
                         docker run --rm \
                           --user "$(id -u):$(id -g)" \
                           --volumes-from jenkins \
@@ -74,8 +84,8 @@ pipeline {
                             -Dsonar.maven.scanAll=false \
                             -Dsonar.sources=src/main/java \
                             -Dsonar.tests=src/test/java \
-                            -Dsonar.inclusions="**/*.java" \
-                            -Dsonar.test.inclusions="**/*.java" \
+                            -Dsonar.inclusions="src/main/java/**/*.java" \
+                            -Dsonar.test.inclusions="src/test/java/**/*.java" \
                             -Dsonar.java.binaries=target/classes \
                             -Dsonar.java.test.binaries=target/test-classes \
                             -Dsonar.qualitygate.wait=true \
