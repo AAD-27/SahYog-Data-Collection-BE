@@ -36,8 +36,9 @@ class ProgramDetailsServiceImplTest {
 
     @Test
     void rejectsEmptyProgramSelection() {
+        ProgramSaveRequest invalidRequest = new ProgramSaveRequest("D9000016", "DC005", List.of());
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> service.next(new ProgramSaveRequest("D9000016", "DC005", List.of())));
+                () -> service.next(invalidRequest));
         assertEquals(400, exception.getStatusCode().value());
     }
 

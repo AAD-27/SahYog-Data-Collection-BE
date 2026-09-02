@@ -41,8 +41,9 @@ class PersonInformationServiceImplTest {
         PersonDetails person = new PersonDetails(null, "Primary Applicant", "Ameya", null, "Dikshit",
                 LocalDate.of(1995, 1, 1), null, "Male", null, null, null, "123", null, null,
                 "SELF", false, true, null);
+        PersonSaveRequest invalidRequest = new PersonSaveRequest("D9000016", "DC005", person);
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> service.next(new PersonSaveRequest("D9000016", "DC005", person)));
+                () -> service.next(invalidRequest));
         assertEquals(400, exception.getStatusCode().value());
     }
 

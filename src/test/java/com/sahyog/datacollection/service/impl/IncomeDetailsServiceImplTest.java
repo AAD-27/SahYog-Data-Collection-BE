@@ -24,8 +24,9 @@ class IncomeDetailsServiceImplTest {
     }
     @Test void rejectsEndDateBeforeStartDate(){
         when(jdbc.queryForObject(anyString(),eq(Integer.class),eq("D9000016"))).thenReturn(1);
+        IncomeDetailsSaveRequest invalidRequest = request("D9000016",7L,"2026-08-07","2026-08-01");
         ResponseStatusException ex=assertThrows(ResponseStatusException.class,
-                ()->service.next(request("D9000016",7L,"2026-08-07","2026-08-01")));
+                ()->service.next(invalidRequest));
         assertEquals(400,ex.getStatusCode().value());
     }
     private IncomeDetailsSaveRequest request(String number,Long id,String start,String end){
