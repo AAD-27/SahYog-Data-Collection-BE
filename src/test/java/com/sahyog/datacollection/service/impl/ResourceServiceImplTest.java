@@ -16,7 +16,8 @@ class ResourceServiceImplTest {
     }
     @Test void detailsNextUpdatesAndNavigatesToDisabilitySummary(){
         exists();when(jdbc.update(anyString(),any(Object[].class))).thenReturn(1);
-        var x=new ResourceDetails(4L,"Bank Account","SBI Savings XXXX1234",new BigDecimal("50000"),"2026-08-01","");
+        var x=new ResourceDetails(4L,"Bank Account","SBI Savings XXXX1234",new BigDecimal("50000"),
+                "2026-08-01","","Bank Passbook / Statement",null,null,null,null,null,null);
         var r=service.detailsNext(new ResourceDetailsSaveRequest("D9000016","DC011",x));
         assertEquals("DC013",r.destinationPageId());assertEquals(4L,r.resourceId());
     }

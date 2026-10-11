@@ -64,7 +64,9 @@ public class IncomeDetailsServiceImpl implements IncomeDetailsService {
                     INSERT INTO DC_INCOME (APPLICATION_NO, INCOME_TYPE, EMPLOYER_NAME, INCOME_START_DATE,
                     INCOME_END_DATE, PAY_FREQUENCY, INCOME_AMOUNT, APPROX_YEARLY_INCOME,
                     EMPLOYER_ADDRESS_LINE1, EMPLOYER_ADDRESS_LINE2, EMPLOYER_CITY, EMPLOYER_STATE,
-                    EMPLOYER_COUNTRY, EMPLOYER_PINCODE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    EMPLOYER_COUNTRY, EMPLOYER_PINCODE, INCOME_VERIFICATION, EMPLOYMENT_CATEGORY,
+                    OCCUPATION_DESIGNATION, INCOME_BASIS, PAYMENT_MODE, VERIFICATION_REFERENCE_NUMBER,
+                    VERIFICATION_DOCUMENT_DATE) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             bind(ps, caseNum, i, a, start, end); return ps;
         }, keys);
@@ -76,11 +78,16 @@ public class IncomeDetailsServiceImpl implements IncomeDetailsService {
         int count = jdbc.update("""
                 UPDATE DC_INCOME SET INCOME_TYPE=?, EMPLOYER_NAME=?, INCOME_START_DATE=?, INCOME_END_DATE=?,
                 PAY_FREQUENCY=?, INCOME_AMOUNT=?, APPROX_YEARLY_INCOME=?, EMPLOYER_ADDRESS_LINE1=?,
-                EMPLOYER_ADDRESS_LINE2=?, EMPLOYER_CITY=?, EMPLOYER_STATE=?, EMPLOYER_COUNTRY=?, EMPLOYER_PINCODE=?
+                EMPLOYER_ADDRESS_LINE2=?, EMPLOYER_CITY=?, EMPLOYER_STATE=?, EMPLOYER_COUNTRY=?, EMPLOYER_PINCODE=?,
+                INCOME_VERIFICATION=?, EMPLOYMENT_CATEGORY=?, OCCUPATION_DESIGNATION=?, INCOME_BASIS=?,
+                PAYMENT_MODE=?, VERIFICATION_REFERENCE_NUMBER=?, VERIFICATION_DOCUMENT_DATE=?
                 WHERE APPLICATION_NO=? AND INCOME_ID=?
                 """, i.incomeType().trim(), trim(i.employerName()), Date.valueOf(start), toSqlDate(end),
                 i.payFrequency().trim(), i.incomeAmount(), i.approxYearlyIncome(), a.line1().trim(), trim(a.line2()),
-                a.city().trim(), a.state().trim(), a.country().trim(), a.pincode().trim(), caseNum, id);
+                a.city().trim(), a.state().trim(), a.country().trim(), a.pincode().trim(), i.incomeVerification().trim(),
+                trim(i.employmentCategory()), trim(i.occupationDesignation()), trim(i.incomeBasis()),
+                trim(i.paymentMode()), trim(i.verificationReferenceNumber()),
+                toSqlDate(parseOptionalDate(i.verificationDocumentDate(), "verificationDocumentDate")), caseNum, id);
         if (count == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Income record not found: " + id);
     }
     private void bind(PreparedStatement ps, String caseNum, IncomeDetails i, EmployerAddress a,
@@ -90,12 +97,16 @@ public class IncomeDetailsServiceImpl implements IncomeDetailsService {
         ps.setBigDecimal(7, i.incomeAmount()); ps.setBigDecimal(8, i.approxYearlyIncome());
         ps.setString(9, a.line1().trim()); ps.setString(10, trim(a.line2())); ps.setString(11, a.city().trim());
         ps.setString(12, a.state().trim()); ps.setString(13, a.country().trim()); ps.setString(14, a.pincode().trim());
+        ps.setString(15, i.incomeVerification().trim()); ps.setString(16, trim(i.employmentCategory()));
+        ps.setString(17, trim(i.occupationDesignation())); ps.setString(18, trim(i.incomeBasis()));
+        ps.setString(19, trim(i.paymentMode())); ps.setString(20, trim(i.verificationReferenceNumber()));
+        ps.setDate(21, toSqlDate(parseOptionalDate(i.verificationDocumentDate(), "verificationDocumentDate")));
     }
     private void validate(IncomeDetails i) {
         EmployerAddress a = i.employerAddress();
         if (blank(i.incomeType()) || blank(i.payFrequency()) || i.incomeAmount() == null
                 || i.approxYearlyIncome() == null || a == null || blank(a.line1()) || blank(a.city())
-                || blank(a.state()) || blank(a.country()) || blank(a.pincode()))
+                || blank(a.state()) || blank(a.country()) || blank(a.pincode()) || blank(i.incomeVerification()))
             throw bad("incomeType, payFrequency, amounts, employer address, and incomeStartDate are required");
         if (i.incomeAmount().signum() < 0 || i.approxYearlyIncome().signum() < 0) throw bad("income amounts cannot be negative");
         if (!PINCODE.matcher(a.pincode().trim()).matches()) throw bad("employerAddress.pincode must contain exactly 6 digits");
@@ -107,13 +118,17 @@ public class IncomeDetailsServiceImpl implements IncomeDetailsService {
                 new EmployerAddress(rs.getString("EMPLOYER_ADDRESS_LINE1"), rs.getString("EMPLOYER_ADDRESS_LINE2"),
                 rs.getString("EMPLOYER_CITY"), rs.getString("EMPLOYER_STATE"), rs.getString("EMPLOYER_COUNTRY"),
                 rs.getString("EMPLOYER_PINCODE")), rs.getDate("INCOME_START_DATE").toLocalDate().toString(),
-                end == null ? "" : end.toLocalDate().toString());
+                end == null ? "" : end.toLocalDate().toString(), rs.getString("INCOME_VERIFICATION"),
+                rs.getString("EMPLOYMENT_CATEGORY"), rs.getString("OCCUPATION_DESIGNATION"),
+                rs.getString("INCOME_BASIS"), rs.getString("PAYMENT_MODE"),
+                rs.getString("VERIFICATION_REFERENCE_NUMBER"), dateString(rs.getDate("VERIFICATION_DOCUMENT_DATE")));
     }
     private String selectSql() { return "SELECT * FROM DC_INCOME WHERE APPLICATION_NO=? AND INCOME_ID=?"; }
     private LocalDate parseRequiredDate(String v, String field) { if (blank(v)) throw bad(field + " is required"); return parse(v, field); }
     private LocalDate parseOptionalDate(String v, String field) { return blank(v) ? null : parse(v, field); }
     private LocalDate parse(String v, String field) { try { return LocalDate.parse(v); } catch (DateTimeParseException e) { throw bad(field + " must use yyyy-MM-dd"); } }
     private Date toSqlDate(LocalDate v) { return v == null ? null : Date.valueOf(v); }
+    private String dateString(Date v) { return v == null ? "" : v.toLocalDate().toString(); }
     private void ensureApplication(String c) { Integer n=jdbc.queryForObject("SELECT COUNT(*) FROM DC_APPLICATION WHERE APPLICATION_NO=?",Integer.class,c); if(n==null||n==0) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Data collection application not found: "+c); }
     private String resolve(String v) { String n=v==null?"":v.trim().toUpperCase(Locale.ROOT); if(!NUMBER.matcher(n).matches()) throw bad("appOrCaseNum must match A or D followed by 7 digits"); return n.startsWith("A")?"D"+n.substring(1):n; }
     private String trim(String v) { return blank(v)?null:v.trim(); }

@@ -16,7 +16,8 @@ class ExpenseServiceImplTest {
     }
     @Test void detailsNextUpdatesAndNavigatesToResourceSummary(){
         exists();when(jdbc.update(anyString(),any(Object[].class))).thenReturn(1);
-        var e=new ExpenseDetails(3L,"Rent / Housing","Monthly rent","Monthly",new BigDecimal("1000"),"2026-08-01","");
+        var e=new ExpenseDetails(3L,"Rent / Housing","Monthly rent","Monthly",new BigDecimal("1000"),
+                "2026-08-01","","Rent Receipt",null,null,null,null,null,null);
         var r=service.detailsNext(new ExpenseDetailsSaveRequest("D9000016","DC009",e));
         assertEquals("DC011",r.destinationPageId());assertEquals(3L,r.expenseId());
     }

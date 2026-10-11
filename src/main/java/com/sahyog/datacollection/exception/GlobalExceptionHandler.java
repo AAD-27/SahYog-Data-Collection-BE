@@ -24,6 +24,13 @@ public class GlobalExceptionHandler {
                 Instant.now(), exception.status(), exception.errorCode(), exception.getMessage()));
     }
 
+    @ExceptionHandler(NavigationProgressException.class)
+    public ResponseEntity<NavigationProgressErrorResponse> handleNavigationProgress(
+            NavigationProgressException exception) {
+        return ResponseEntity.status(exception.status()).body(new NavigationProgressErrorResponse(
+                exception.status(), exception.errorCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<AuthErrorResponse> handleInvalidRequest(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()

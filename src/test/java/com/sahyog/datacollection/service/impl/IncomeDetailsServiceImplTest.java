@@ -32,7 +32,7 @@ class IncomeDetailsServiceImplTest {
     private IncomeDetailsSaveRequest request(String number,Long id,String start,String end){
         var address=new EmployerAddress("aaaaa","","aaa","Jharkhand","India","123456");
         var income=new IncomeDetails(id,"aaa","Salary","quarterly",new BigDecimal("100"),
-                new BigDecimal("400"),address,start,end);
+                new BigDecimal("400"),address,start,end,"Employer Certificate",null,null,null,null,null,null);
         return new IncomeDetailsSaveRequest(number,"DC007",income);
     }
 }

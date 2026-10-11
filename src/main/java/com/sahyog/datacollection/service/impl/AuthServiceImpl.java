@@ -149,7 +149,7 @@ public class AuthServiceImpl implements AuthService {
                     INSERT INTO DC_USER_ACCOUNT
                     (PROFILE_TYPE,EMPLOYEE_ID,FIRST_NAME,MIDDLE_NAME,LAST_NAME,EMAIL,DEPARTMENT,
                      DESIGNATION,PASSWORD_HASH,ROLE,ACCOUNT_STATUS,APPROVAL_STATUS,VERIFICATION_REQUIRED)
-                    VALUES ('GOVERNMENT_OFFICIAL',?,?,?,?,?,?,?,?,'CASE_WORKER','DISABLED','PENDING_APPROVAL',TRUE)
+                    VALUES ('GOVERNMENT_OFFICIAL',?,?,?,?,?,?,?,?,'CASE_WORKER','ACTIVE','APPROVED',FALSE)
                     """, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, request.employeeId().trim().toUpperCase(Locale.ROOT));
                 ps.setString(2, request.firstName().trim());
@@ -170,7 +170,7 @@ public class AuthServiceImpl implements AuthService {
         return new OfficialRegistrationResponse(userId,
                 request.employeeId().trim().toUpperCase(Locale.ROOT),
                 "GOVERNMENT_OFFICIAL", "CASE_WORKER",
-                "Government Official account registration submitted", "PENDING_APPROVAL");
+                "Government Official account created successfully", "APPROVED");
     }
 
     @Override @Transactional
